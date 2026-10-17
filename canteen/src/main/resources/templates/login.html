@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | CampusBite</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+          rel="stylesheet">
+
+    <style>
+        :root {
+            --cream: #f8f7f1;
+            --dark: #20221d;
+            --green: #c5f467;
+            --muted: #77796f;
+            --border: #e5e4dc;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--cream);
+            color: var(--dark);
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .navbar {
+            padding: 24px 7%;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand {
+            color: var(--dark);
+            font-size: 25px;
+            font-weight: 700;
+            letter-spacing: -1.2px;
+            text-decoration: none;
+        }
+
+        .brand span {
+            color: #729b2d;
+        }
+
+        .back-link {
+            color: var(--dark);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .login-layout {
+            min-height: calc(100vh - 85px);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .login-visual {
+            background: var(--green);
+            padding: 60px 10%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .eyebrow {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .visual-title {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(40px, 5vw, 68px);
+            line-height: 1.08;
+            letter-spacing: -1.5px;
+            max-width: 500px;
+        }
+
+        .visual-description {
+            max-width: 380px;
+            color: #404b2d;
+            line-height: 1.8;
+            margin-top: 20px;
+        }
+
+        .food-illustration {
+            font-size: clamp(100px, 15vw, 190px);
+            text-align: center;
+            margin-top: 25px;
+            filter: drop-shadow(0 15px 12px #526b2730);
+        }
+
+        .login-form-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 55px 8%;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 410px;
+        }
+
+        .login-card h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 38px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 9px;
+        }
+
+        .form-control {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 15px;
+            font-size: 14px;
+        }
+
+        .form-control:focus {
+            border-color: #9acb45;
+            box-shadow: 0 0 0 3px #c5f46740;
+        }
+
+        .password-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            margin: 16px 0 24px;
+        }
+
+        .form-check-input:checked {
+            background-color: #729b2d;
+            border-color: #729b2d;
+        }
+
+        .text-link {
+            color: #587d20;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .text-link:hover {
+            text-decoration: underline;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 15px;
+            background: var(--dark);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .login-button:hover {
+            background: #3b4330;
+            transform: translateY(-1px);
+        }
+
+        .signup-text {
+            margin-top: 26px;
+            text-align: center;
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        .footer-note {
+            margin-top: 35px;
+            text-align: center;
+            color: #929389;
+            font-size: 11px;
+        }
+
+        @media (max-width: 768px) {
+            .login-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .login-visual {
+                padding: 40px 8%;
+                min-height: 290px;
+            }
+
+            .visual-title {
+                font-size: 42px;
+            }
+
+            .visual-description {
+                margin-top: 12px;
+            }
+
+            .food-illustration {
+                display: none;
+            }
+
+            .login-form-section {
+                padding: 45px 8%;
+            }
+
+            .navbar {
+                padding: 20px 6%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<nav class="navbar d-flex justify-content-between align-items-center">
+    <a class="brand" th:href="@{/}">Campus<span>Bite.</span></a>
+    <a class="back-link" th:href="@{/menu}">Explore menu ↗</a>
+</nav>
+
+<main class="login-layout">
+    <section class="login-visual">
+        <div class="eyebrow">GOOD FOOD. ZERO FUSS.</div>
+        <h2 class="visual-title">
+            Your campus cravings, sorted.
+        </h2>
+        <p class="visual-description">
+            Skip the queue, discover your favourites, and get back to what matters.
+            Your next great meal is just a few clicks away.
+        </p>
+        <div class="food-illustration" aria-hidden="true">🍔</div>
+    </section>
+
+    <section class="login-form-section">
+        <div class="login-card">
+            <h1>Welcome back.</h1>
+            <p class="subtitle">Sign in to your CampusBite account.</p>
+
+            <div class="alert alert-danger py-2"
+                 th:if="${param.error}">
+                Invalid email or password. Please try again.
+            </div>
+
+            <div class="alert alert-success py-2"
+                 th:if="${param.logout}">
+                You have been logged out successfully.
+            </div>
+
+            <form th:action="@{/login}" method="post">
+                <div class="mb-4">
+                    <label for="username" class="form-label">
+                        College email
+                    </label>
+                    <input type="email"
+                           class="form-control"
+                           id="username"
+                           name="username"
+                           placeholder="you@college.edu"
+                           autocomplete="username"
+                           required>
+                </div>
+
+                <div>
+                    <label for="password" class="form-label">
+                        Password
+                    </label>
+                    <input type="password"
+                           class="form-control"
+                           id="password"
+                           name="password"
+                           placeholder="Enter your password"
+                           autocomplete="current-password"
+                           required>
+                </div>
+
+                <div class="password-options">
+                    <label class="form-check d-flex gap-2 align-items-center">
+                        <input class="form-check-input mt-0"
+                               type="checkbox"
+                               name="remember-me">
+                        Remember me
+                    </label>
+                    <a th:href="@{/forgot-password}" class="text-link">
+                        Forgot password?
+                    </a>
+                </div>
+
+                <button type="submit" class="login-button">
+                    Sign in →
+                </button>
+            </form>
+
+            <p class="signup-text">
+                New to CampusBite?
+                <a th:href="@{/register}" class="text-link">Create an account</a>
+            </p>
+
+            <p class="footer-note">
+                CAMPUSBITE · MADE FOR CAMPUS LIFE
+            </p>
+        </div>
+    </section>
+</main>
+</body>
+</html>
+```

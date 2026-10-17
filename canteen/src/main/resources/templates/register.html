@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account | CampusBite</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+          rel="stylesheet">
+
+    <style>
+        :root {
+            --cream: #f8f7f1;
+            --dark: #20221d;
+            --green: #c5f467;
+            --muted: #77796f;
+            --border: #e5e4dc;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--cream);
+            color: var(--dark);
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .navbar {
+            padding: 24px 7%;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand {
+            color: var(--dark);
+            font-size: 25px;
+            font-weight: 700;
+            letter-spacing: -1.2px;
+            text-decoration: none;
+        }
+
+        .brand span {
+            color: #729b2d;
+        }
+
+        .nav-link-custom {
+            color: var(--dark);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .register-layout {
+            min-height: calc(100vh - 85px);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .register-visual {
+            background: var(--green);
+            padding: 60px 10%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .eyebrow {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .visual-title {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(40px, 5vw, 68px);
+            line-height: 1.08;
+            letter-spacing: -1.5px;
+            max-width: 500px;
+        }
+
+        .visual-description {
+            max-width: 390px;
+            color: #404b2d;
+            line-height: 1.8;
+            margin-top: 20px;
+        }
+
+        .food-illustration {
+            font-size: clamp(100px, 14vw, 175px);
+            text-align: center;
+            margin-top: 25px;
+            filter: drop-shadow(0 15px 12px #526b2730);
+        }
+
+        .register-form-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 45px 8%;
+        }
+
+        .register-card {
+            width: 100%;
+            max-width: 410px;
+        }
+
+        .register-card h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 38px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 28px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 13px 14px;
+            font-size: 14px;
+        }
+
+        .form-control:focus {
+            border-color: #9acb45;
+            box-shadow: 0 0 0 3px #c5f46740;
+        }
+
+        .register-button {
+            width: 100%;
+            padding: 15px;
+            margin-top: 22px;
+            background: var(--dark);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .register-button:hover {
+            background: #3b4330;
+            transform: translateY(-1px);
+        }
+
+        .login-text {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        .text-link {
+            color: #587d20;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .text-link:hover {
+            text-decoration: underline;
+        }
+
+        .terms-note {
+            margin-top: 18px;
+            color: #929389;
+            font-size: 11px;
+            text-align: center;
+            line-height: 1.7;
+        }
+
+        @media (max-width: 768px) {
+            .register-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .register-visual {
+                padding: 35px 8%;
+                min-height: 260px;
+            }
+
+            .visual-title {
+                font-size: 42px;
+            }
+
+            .visual-description {
+                margin-top: 12px;
+            }
+
+            .food-illustration {
+                display: none;
+            }
+
+            .register-form-section {
+                padding: 40px 8%;
+            }
+
+            .navbar {
+                padding: 20px 6%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<nav class="navbar d-flex justify-content-between align-items-center">
+    <a class="brand" th:href="@{/}">Campus<span>Bite.</span></a>
+    <a class="nav-link-custom" th:href="@{/login}">Already a member? Sign in →</a>
+</nav>
+
+<main class="register-layout">
+    <section class="register-visual">
+        <div class="eyebrow">YOUR CAMPUS. YOUR CRAVINGS.</div>
+
+        <h2 class="visual-title">
+            Good food is just around the corner.
+        </h2>
+
+        <p class="visual-description">
+            Join CampusBite to explore your canteen menu, save your favourites,
+            and make your next campus meal a little easier.
+        </p>
+
+        <div class="food-illustration" aria-hidden="true">🍔</div>
+    </section>
+
+    <section class="register-form-section">
+        <div class="register-card">
+            <h1>Join CampusBite.</h1>
+            <p class="subtitle">Create your account and get started.</p>
+
+            <div class="alert alert-danger py-2"
+                 th:if="${errorMessage}"
+                 th:text="${errorMessage}">
+            </div>
+
+            <form th:action="@{/register}" method="post">
+                <div class="mb-3">
+                    <label for="fullName" class="form-label">Full name</label>
+                    <input type="text"
+                           class="form-control"
+                           id="fullName"
+                           name="fullName"
+                           placeholder="Enter your full name"
+                           autocomplete="name"
+                           required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">College email</label>
+                    <input type="email"
+                           class="form-control"
+                           id="email"
+                           name="email"
+                           placeholder="you@college.edu"
+                           autocomplete="email"
+                           required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="rollNumber" class="form-label">
+                        College roll number
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="rollNumber"
+                           name="rollNumber"
+                           placeholder="Enter your roll number"
+                           required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password"
+                           class="form-control"
+                           id="password"
+                           name="password"
+                           placeholder="Create a password"
+                           minlength="8"
+                           autocomplete="new-password"
+                           required>
+                </div>
+
+                <div class="mb-2">
+                    <label for="confirmPassword" class="form-label">
+                        Confirm password
+                    </label>
+                    <input type="password"
+                           class="form-control"
+                           id="confirmPassword"
+                           name="confirmPassword"
+                           placeholder="Re-enter your password"
+                           minlength="8"
+                           autocomplete="new-password"
+                           required>
+                </div>
+
+                <button type="submit" class="register-button">
+                    Create account →
+                </button>
+            </form>
+
+            <p class="login-text">
+                Already have an account?
+                <a th:href="@{/login}" class="text-link">Sign in</a>
+            </p>
+
+            <p class="terms-note">
+                CAMPUSBITE · MADE FOR CAMPUS LIFE
+            </p>
+        </div>
+    </section>
+</main>
+
+<script>
+    const form = document.querySelector("form");
+    const password = document.getElementById("password");
+    const confirmPassword = document.getElementById("confirmPassword");
+
+    form.addEventListener("submit", function (event) {
+        if (password.value !== confirmPassword.value) {
+            event.preventDefault();
+            confirmPassword.setCustomValidity("Passwords do not match.");
+            confirmPassword.reportValidity();
+        } else {
+            confirmPassword.setCustomValidity("");
+        }
+    });
+
+    confirmPassword.addEventListener("input", function () {
+        confirmPassword.setCustomValidity("");
+    });
+</script>
+</body>
+</html>
+```
