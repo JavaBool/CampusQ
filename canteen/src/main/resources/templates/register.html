@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Account | CampusBite</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
-          rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
@@ -19,9 +17,7 @@
             --border: #e5e4dc;
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -44,9 +40,7 @@
             text-decoration: none;
         }
 
-        .brand span {
-            color: #729b2d;
-        }
+        .brand span { color: #729b2d; }
 
         .nav-link-custom {
             color: var(--dark);
@@ -103,7 +97,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 45px 8%;
+            padding: 40px 8%;
         }
 
         .register-card {
@@ -120,7 +114,7 @@
         .subtitle {
             color: var(--muted);
             font-size: 14px;
-            margin-bottom: 28px;
+            margin-bottom: 25px;
         }
 
         .form-label {
@@ -130,10 +124,10 @@
         }
 
         .form-control {
-            background: #fff;
+            background: white;
             border: 1px solid var(--border);
             border-radius: 10px;
-            padding: 13px 14px;
+            padding: 12px 14px;
             font-size: 14px;
         }
 
@@ -145,7 +139,7 @@
         .register-button {
             width: 100%;
             padding: 15px;
-            margin-top: 22px;
+            margin-top: 18px;
             background: var(--dark);
             color: white;
             border: none;
@@ -157,6 +151,12 @@
         .register-button:hover {
             background: #3b4330;
             transform: translateY(-1px);
+        }
+
+        .register-button:disabled {
+            opacity: 0.7;
+            cursor: wait;
+            transform: none;
         }
 
         .login-text {
@@ -172,9 +172,7 @@
             font-weight: 700;
         }
 
-        .text-link:hover {
-            text-decoration: underline;
-        }
+        .text-link:hover { text-decoration: underline; }
 
         .terms-note {
             margin-top: 18px;
@@ -185,34 +183,13 @@
         }
 
         @media (max-width: 768px) {
-            .register-layout {
-                grid-template-columns: 1fr;
-            }
-
-            .register-visual {
-                padding: 35px 8%;
-                min-height: 260px;
-            }
-
-            .visual-title {
-                font-size: 42px;
-            }
-
-            .visual-description {
-                margin-top: 12px;
-            }
-
-            .food-illustration {
-                display: none;
-            }
-
-            .register-form-section {
-                padding: 40px 8%;
-            }
-
-            .navbar {
-                padding: 20px 6%;
-            }
+            .register-layout { grid-template-columns: 1fr; }
+            .register-visual { padding: 35px 8%; min-height: 250px; }
+            .visual-title { font-size: 42px; }
+            .visual-description { margin-top: 12px; }
+            .food-illustration { display: none; }
+            .register-form-section { padding: 40px 8%; }
+            .navbar { padding: 20px 6%; }
         }
     </style>
 </head>
@@ -220,22 +197,19 @@
 <body>
 <nav class="navbar d-flex justify-content-between align-items-center">
     <a class="brand" th:href="@{/}">Campus<span>Bite.</span></a>
-    <a class="nav-link-custom" th:href="@{/login}">Already a member? Sign in →</a>
+    <a class="nav-link-custom" th:href="@{/login}">
+        Already a member? Sign in →
+    </a>
 </nav>
 
 <main class="register-layout">
     <section class="register-visual">
         <div class="eyebrow">YOUR CAMPUS. YOUR CRAVINGS.</div>
-
-        <h2 class="visual-title">
-            Good food is just around the corner.
-        </h2>
-
+        <h2 class="visual-title">Good food is just around the corner.</h2>
         <p class="visual-description">
             Join CampusBite to explore your canteen menu, save your favourites,
             and make your next campus meal a little easier.
         </p>
-
         <div class="food-illustration" aria-hidden="true">🍔</div>
     </section>
 
@@ -244,73 +218,55 @@
             <h1>Join CampusBite.</h1>
             <p class="subtitle">Create your account and get started.</p>
 
-            <div class="alert alert-danger py-2"
-                 th:if="${errorMessage}"
-                 th:text="${errorMessage}">
-            </div>
+            <div id="message" class="alert d-none"
+                 role="alert" aria-live="polite"></div>
 
-            <form th:action="@{/register}" method="post">
+            <form id="registerForm">
                 <div class="mb-3">
                     <label for="fullName" class="form-label">Full name</label>
-                    <input type="text"
-                           class="form-control"
-                           id="fullName"
-                           name="fullName"
+                    <input type="text" class="form-control"
+                           id="fullName" name="fullName"
                            placeholder="Enter your full name"
-                           autocomplete="name"
-                           required>
+                           autocomplete="name" required>
                 </div>
 
                 <div class="mb-3">
                     <label for="email" class="form-label">College email</label>
-                    <input type="email"
-                           class="form-control"
-                           id="email"
-                           name="email"
+                    <input type="email" class="form-control"
+                           id="email" name="email"
                            placeholder="you@college.edu"
-                           autocomplete="email"
-                           required>
+                           autocomplete="email" required>
                 </div>
 
                 <div class="mb-3">
                     <label for="rollNumber" class="form-label">
                         College roll number
                     </label>
-                    <input type="text"
-                           class="form-control"
-                           id="rollNumber"
-                           name="rollNumber"
-                           placeholder="Enter your roll number"
-                           required>
+                    <input type="text" class="form-control"
+                           id="rollNumber" name="rollNumber"
+                           placeholder="Enter your roll number" required>
                 </div>
 
                 <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
-                    <input type="password"
-                           class="form-control"
-                           id="password"
-                           name="password"
+                    <input type="password" class="form-control"
+                           id="password" name="password"
                            placeholder="Create a password"
-                           minlength="8"
-                           autocomplete="new-password"
-                           required>
+                           minlength="8" autocomplete="new-password" required>
+                    <div class="form-text">Use at least 8 characters.</div>
                 </div>
 
                 <div class="mb-2">
                     <label for="confirmPassword" class="form-label">
                         Confirm password
                     </label>
-                    <input type="password"
-                           class="form-control"
-                           id="confirmPassword"
-                           name="confirmPassword"
+                    <input type="password" class="form-control"
+                           id="confirmPassword" name="confirmPassword"
                            placeholder="Re-enter your password"
-                           minlength="8"
-                           autocomplete="new-password"
-                           required>
+                           minlength="8" autocomplete="new-password" required>
                 </div>
 
-                <button type="submit" class="register-button">
+                <button type="submit" id="submitButton" class="register-button">
                     Create account →
                 </button>
             </form>
@@ -320,32 +276,84 @@
                 <a th:href="@{/login}" class="text-link">Sign in</a>
             </p>
 
-            <p class="terms-note">
-                CAMPUSBITE · MADE FOR CAMPUS LIFE
-            </p>
+            <p class="terms-note">CAMPUSBITE · MADE FOR CAMPUS LIFE</p>
         </div>
     </section>
 </main>
 
 <script>
-    const form = document.querySelector("form");
-    const password = document.getElementById("password");
-    const confirmPassword = document.getElementById("confirmPassword");
+    const registerForm = document.getElementById("registerForm");
+    const registerMessage = document.getElementById("message");
+    const registerButton = document.getElementById("submitButton");
+    const passwordInput = document.getElementById("password");
+    const confirmPasswordInput = document.getElementById("confirmPassword");
 
-    form.addEventListener("submit", function (event) {
-        if (password.value !== confirmPassword.value) {
-            event.preventDefault();
-            confirmPassword.setCustomValidity("Passwords do not match.");
-            confirmPassword.reportValidity();
-        } else {
-            confirmPassword.setCustomValidity("");
-        }
+    function showRegisterMessage(text, type) {
+        registerMessage.textContent = text;
+        registerMessage.className = "alert alert-" + type;
+    }
+
+    confirmPasswordInput.addEventListener("input", () => {
+        confirmPasswordInput.setCustomValidity("");
     });
 
-    confirmPassword.addEventListener("input", function () {
-        confirmPassword.setCustomValidity("");
+    registerForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        registerMessage.className = "alert d-none";
+
+        if (passwordInput.value !== confirmPasswordInput.value) {
+            confirmPasswordInput.setCustomValidity("Passwords do not match.");
+            confirmPasswordInput.reportValidity();
+            return;
+        }
+
+        confirmPasswordInput.setCustomValidity("");
+        registerButton.disabled = true;
+        registerButton.textContent = "Creating account…";
+
+        try {
+            const response = await fetch("/api/v1/auth/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    fullName: document.getElementById("fullName").value.trim(),
+                    email: document.getElementById("email").value.trim(),
+                    rollNumber: document.getElementById("rollNumber").value.trim(),
+                    password: passwordInput.value,
+                    confirmPassword: confirmPasswordInput.value
+                })
+            });
+
+            const result = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(
+                    result.message || result.error ||
+                    "Registration failed. Please check your details."
+                );
+            }
+
+            showRegisterMessage(
+                result.message || "Account created successfully.",
+                "success"
+            );
+
+            if (result.redirectUrl) {
+                window.location.assign(result.redirectUrl);
+            }
+        } catch (error) {
+            showRegisterMessage(
+                error.message || "Could not connect to the server. Please try again.",
+                "danger"
+            );
+        } finally {
+            registerButton.disabled = false;
+            registerButton.textContent = "Create account →";
+        }
     });
 </script>
 </body>
 </html>
-```
