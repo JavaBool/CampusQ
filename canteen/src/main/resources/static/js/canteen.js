@@ -482,14 +482,6 @@
 
             document.body.appendChild(form);
 
-            // Clear the cart only after all item IDs and quantities
-            // have been copied into the checkout form.
-            if (!clearCart()) {
-                form.remove();
-                return;
-            }
-
-            // Update the visible cart page immediately.
             renderCart();
 
             // Submit the preserved item data to Spring Boot.

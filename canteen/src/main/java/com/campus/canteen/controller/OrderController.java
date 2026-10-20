@@ -215,6 +215,7 @@ public class OrderController {
         model.addAttribute("items", billItems);
         model.addAttribute("total", total);
 
+        model.addAttribute("clearCart", true);
         return "checkout-bill";
     }
 
