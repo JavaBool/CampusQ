@@ -23,10 +23,6 @@ public class PageController {
     public String home() {
         return "index";
     }
-    @GetMapping("/menu")
-    public String menu() {
-        return "menu";
-    }
     @GetMapping("/cart")
     public String cart() {
         return "cart";

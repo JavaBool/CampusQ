@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Orders | CampusBite</title>
+
+    <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+            rel="stylesheet">
+
+    <style>
+        :root {
+            --cream: #f8f5ed;
+            --dark: #22251f;
+            --lime: #c9f269;
+            --muted: #74786e;
+            --border: #e5e1d7;
+        }
+
+        body {
+            background: var(--cream);
+            color: var(--dark);
+            font-family: Arial, sans-serif;
+        }
+
+        .page-header {
+            padding: 40px 0 24px;
+        }
+
+        .page-header h1 {
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        .order-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .order-header {
+            padding: 22px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .order-body {
+            padding: 24px;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            background: #eee;
+        }
+
+        .status-paid {
+            background: #e4f6d2;
+            color: #285c20;
+        }
+
+        .status-pending {
+            background: #fff0c2;
+            color: #785500;
+        }
+
+        .status-failed,
+        .status-cancelled {
+            background: #ffe0dc;
+            color: #922b21;
+        }
+
+        .status-placed,
+        .status-preparing {
+            background: #e5eaff;
+            color: #334b9b;
+        }
+
+        .status-ready {
+            background: #d9f4ef;
+            color: #17695c;
+        }
+
+        .status-completed {
+            background: #e4f6d2;
+            color: #285c20;
+        }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0eee8;
+        }
+
+        .item-row:last-child {
+            border-bottom: 0;
+        }
+
+        .order-total {
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
+
+        .btn-menu {
+            background: var(--lime);
+            color: var(--dark);
+            border: 0;
+            border-radius: 10px;
+            padding: 11px 18px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-menu:hover {
+            background: #b8e454;
+            color: var(--dark);
+        }
+
+        .empty-state {
+            background: #fff;
+            border: 1px dashed #d5d0c4;
+            border-radius: 18px;
+            padding: 48px 20px;
+            text-align: center;
+        }
+
+        .metadata {
+            overflow-wrap: anywhere;
+        }
+    </style>
+</head>
+
+<body>
+<main class="container pb-5">
+    <header class="page-header">
+        <p class="muted mb-2">CAMPUSBITE / ORDER HISTORY</p>
+
+        <h1>My Orders</h1>
+
+        <p class="muted mb-0"
+           th:if="${fullName != null}"
+           th:text="|Welcome back, ${fullName}.|">
+            Welcome back.
+        </p>
+    </header>
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <p class="muted mb-0">
+            Your current orders and previous purchases.
+        </p>
+
+        <a th:href="@{/menu}" class="btn-menu">Browse Menu</a>
+    </div>
+
+    <div th:if="${#lists.isEmpty(orders)}" class="empty-state">
+        <h3 class="fw-bold mb-2">No orders yet</h3>
+        <p class="muted mb-4">
+            Your orders will appear here after you check out.
+        </p>
+        <a th:href="@{/menu}" class="btn-menu">Explore the Menu</a>
+    </div>
+
+    <section th:each="order : ${orders}" class="order-card">
+        <div class="order-header">
+            <div>
+                <h5 class="fw-bold mb-1"
+                    th:text="|Order #${order.id}|">
+                    Order #1
+                </h5>
+
+                <div class="muted"
+                     th:text="${#dates.format(order.createdAt, 'dd MMM yyyy, hh:mm a')}">
+                    20 Oct 2026, 01:30 PM
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+                    <span class="status"
+                          th:classappend="${'status-' + #strings.toLowerCase(order.orderStatus)}"
+                          th:text="${order.orderStatus}">
+                        PLACED
+                    </span>
+
+                <span class="status"
+                      th:classappend="${order.paymentStatus == 'PAID' ? ' status-paid' :
+                              (order.paymentStatus == 'PENDING' ? ' status-pending' :
+                              (order.paymentStatus == 'FAILED' ? ' status-failed' : ''))}"
+                      th:text="${order.paymentStatus}">
+                        PENDING
+                    </span>
+            </div>
+        </div>
+
+        <div class="order-body">
+            <h6 class="fw-bold mb-3">Items ordered</h6>
+
+            <div th:each="item : ${order.items}" class="item-row">
+                <div>
+                    <div class="fw-semibold" th:text="${item.productName}">
+                        Veg Sandwich
+                    </div>
+
+                    <div class="muted"
+                         th:text="|₹${item.unitPrice} × ${item.quantity}|">
+                        ₹80.00 × 2
+                    </div>
+                </div>
+
+                <div class="fw-semibold text-nowrap"
+                     th:text="|₹${item.subtotal}|">
+                    ₹160.00
+                </div>
+            </div>
+
+            <div class="row mt-4 g-3">
+                <div class="col-md-7">
+                    <div class="muted mb-1">Transaction ID</div>
+
+                    <div class="metadata fw-semibold"
+                         th:text="${order.transactionId != null
+                                 ? order.transactionId : 'Not generated yet'}">
+                        CB-TRANSACTION-ID
+                    </div>
+                </div>
+
+                <div class="col-md-5 text-md-end">
+                    <div class="muted mb-1">Order total</div>
+
+                    <div class="order-total"
+                         th:text="|₹${order.totalAmount}|">
+                        ₹160.00
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+</script>
+</body>
+</html>

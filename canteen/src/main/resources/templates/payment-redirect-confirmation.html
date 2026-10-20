@@ -1,0 +1,38 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Confirming Order — CampusBite</title>
+</head>
+<body>
+<p>Payment successful. Verifying your order…</p>
+
+<form id="confirmationForm"
+      th:action="@{/order/confirmation}"
+      method="post">
+
+    <input type="hidden"
+           name="orderId"
+           th:value="${orderId}">
+
+    <input type="hidden"
+           name="transactionId"
+           th:value="${transactionId}">
+
+    <input th:if="${_csrf != null}"
+           type="hidden"
+           th:name="${_csrf.parameterName}"
+           th:value="${_csrf.token}">
+
+    <noscript>
+        <button type="submit">Continue to confirmation</button>
+    </noscript>
+</form>
+
+<script>
+    document.getElementById('confirmationForm').submit();
+</script>
+</body>
+</html>
