@@ -1,6 +1,8 @@
 package com.campus.canteen.controller;
 
 import com.campus.canteen.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -67,7 +69,7 @@ public class AuthController {
 
     @PostMapping("/signin")
     public ResponseEntity<Map<String, String>> signIn(
-            @RequestBody SignInRequest request) {
+            @RequestBody SignInRequest request, HttpServletRequest httpRequest) {
 
         if (request.email() == null || request.email().isBlank()
                 || request.password() == null || request.password().isBlank()) {
@@ -86,12 +88,62 @@ public class AuthController {
                     Map.of("message", "Invalid email or password.")
             );
         }
+        var user = authService.findByEmail(request.email())
+                .orElseThrow();
+        HttpSession oldSession = httpRequest.getSession(false);
+        if (oldSession != null) {
+            oldSession.invalidate();
+        }
+
+        HttpSession session = httpRequest.getSession(true);
+
+        session.setAttribute("userId", user.id());
+        session.setAttribute("userEmail", user.email());
+        session.setAttribute("fullName", user.fullName());
 
         return ResponseEntity.ok(
-                Map.of("message", "Credentials verified successfully.")
+                Map.of("message", "Credentials verified successfully.",
+                        "redirectUrl","/")
         );
     }
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(
+            HttpServletRequest httpRequest) {
 
+        HttpSession session = httpRequest.getSession(false);
+
+        if (session != null) {
+            session.invalidate();
+        }
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "message", "Logged out successfully.",
+                        "redirectUrl", "/login"
+                )
+        );
+    }
+    @GetMapping("/session")
+    public ResponseEntity<Map<String, Object>> getSession(
+            HttpSession session) {
+
+        Object userId = session.getAttribute("userId");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                    Map.of("authenticated", false)
+            );
+        }
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "authenticated", true,
+                        "userId", userId,
+                        "userEmail", session.getAttribute("userEmail"),
+                        "fullName", session.getAttribute("fullName")
+                )
+        );
+    }
     public record RegisterRequest(
             String fullName,
             String email,
