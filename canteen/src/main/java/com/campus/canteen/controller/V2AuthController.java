@@ -84,7 +84,6 @@ public class V2AuthController {
 
         return ResponseEntity.ok(Map.of("success", true));
     }
-
     private String extractBearerToken(String authorization) {
         if (authorization == null
                 || !authorization.startsWith("Bearer ")) {

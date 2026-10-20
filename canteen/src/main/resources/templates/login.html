@@ -253,9 +253,13 @@
                                type="checkbox" id="rememberMe">
                         Remember me
                     </label>
-                    <a th:href="@{/auth/forgot-password}" class="text-link">
-                        Forgot password?
-                    </a>
+                    <p class="text-end">
+                        <a th:href="@{/auth/forgot-password}"
+                           href="/auth/forgot-password"
+                           class="text-link">
+                            Forgot password?
+                        </a>
+                    </p>
                 </div>
 
                 <button type="submit" id="submitButton" class="login-button">
