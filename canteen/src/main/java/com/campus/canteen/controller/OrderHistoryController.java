@@ -11,6 +11,19 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Controller serving the customer's personal order history view.
+ *
+ * <p>Authentication &amp; Presentation:
+ * <ul>
+ *   <li>Requires an authenticated student session; unauthenticated requests are redirected
+ *       to {@code /auth/login?returnUrl=/orders} to preserve user intent.</li>
+ *   <li>Uses a SQL {@code LEFT JOIN} against the {@code payments} table so orders where payment
+ *       was never initiated still display with payment status {@code 'NOT INITIATED'}.</li>
+ *   <li>Populates child {@link OrderLine} snapshots containing the product name, unit price,
+ *       and quantity as captured at the time of purchase.</li>
+ * </ul>
+ */
 @Controller
 public class OrderHistoryController {
 
@@ -20,16 +33,35 @@ public class OrderHistoryController {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Immutable projection record representing an individual purchased line item.
+     *
+     * @param productName the snapshot name of the product at purchase
+     * @param unitPrice the unit price billed at checkout
+     * @param quantity the count of items ordered
+     */
     public record OrderLine(
             String productName,
             BigDecimal unitPrice,
             int quantity
     ) {
+        /** Calculates the line total (unit price × quantity). */
         public BigDecimal getSubtotal() {
             return unitPrice.multiply(BigDecimal.valueOf(quantity));
         }
     }
 
+    /**
+     * Immutable projection record representing an entire order including status, payment, and items.
+     *
+     * @param id order primary key
+     * @param totalAmount aggregate bill amount
+     * @param orderStatus fulfillment status (e.g., PLACED, PREPARING, READY, COMPLETED, CANCELLED)
+     * @param paymentStatus payment state (e.g., PENDING, PAID, NOT INITIATED)
+     * @param transactionId cryptographic payment transaction ID, or null
+     * @param createdAt timestamp when the order was placed
+     * @param items list of line item records
+     */
     public record OrderSummary(
             long id,
             BigDecimal totalAmount,
@@ -40,6 +72,13 @@ public class OrderHistoryController {
             List<OrderLine> items
     ) {}
 
+    /**
+     * Renders the order history page for the currently logged-in student.
+     *
+     * @param session the user's HTTP session
+     * @param model the Spring MVC model for view rendering
+     * @return the {@code "orders"} view template, or redirect to login if unauthenticated
+     */
     @GetMapping("/orders")
     public String orders(HttpSession session, Model model) {
 
@@ -51,6 +90,7 @@ public class OrderHistoryController {
 
         long userId = ((Number) sessionUserId).longValue();
 
+        // Query orders with LEFT JOIN on payments to handle unpaid or uninitiated checkouts
         List<OrderSummary> orders = jdbcTemplate.query(
                 """
                 SELECT
@@ -78,7 +118,7 @@ public class OrderHistoryController {
                 userId
         );
 
-        // Load each order's item details.
+        // Load historical item snapshot lines for each order
         List<OrderSummary> ordersWithItems = new ArrayList<>();
 
         for (OrderSummary order : orders) {

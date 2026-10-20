@@ -12,6 +12,12 @@ import java.sql.Timestamp;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * REST controller providing user profile management for mobile and stateless API v2 clients.
+ *
+ * <p>Authentication is enforced on every endpoint via {@code Authorization: Bearer <token>} headers
+ * verified by {@link ApiTokenService#findUserIdByToken(String)}.
+ */
 @RestController
 @RequestMapping("/api/v2/profile")
 public class V2ProfileController {
@@ -26,6 +32,12 @@ public class V2ProfileController {
         this.apiTokenService = apiTokenService;
     }
 
+    /**
+     * Retrieves account details for the authenticated Bearer token owner.
+     *
+     * @param authorization the {@code Authorization: Bearer <token>} header
+     * @return 200 OK with account details JSON, or 401 Unauthorized
+     */
     // POST /api/v2/profile/details
     @PostMapping("/details")
     public ResponseEntity<?> getDetails(
@@ -57,7 +69,7 @@ public class V2ProfileController {
                             "email", rs.getString("email"),
                             "rollNumber", rs.getString("roll_number"),
                             "createdAt", createdAt == null
-                                    ? ""
+                                     ? ""
                                     : createdAt.toInstant().toString()
                     ));
                 },
@@ -65,6 +77,13 @@ public class V2ProfileController {
         );
     }
 
+    /**
+     * Updates the full name of the authenticated user.
+     *
+     * @param authorization the {@code Authorization: Bearer <token>} header
+     * @param request JSON payload containing the updated name (1 to 100 characters)
+     * @return 200 OK with success confirmation, 400 Bad Request, or 401 Unauthorized
+     */
     // POST /api/v2/profile/change/name
     @PostMapping("/change/name")
     public ResponseEntity<?> changeName(
@@ -112,6 +131,13 @@ public class V2ProfileController {
         ));
     }
 
+    /**
+     * Updates the academic roll number of the authenticated user.
+     *
+     * @param authorization the {@code Authorization: Bearer <token>} header
+     * @param request JSON payload containing the new roll number (1 to 50 characters)
+     * @return 200 OK with success confirmation, 400 Bad Request, 409 Conflict if claimed, or 401 Unauthorized
+     */
     // POST /api/v2/profile/change/roll_no
     @PostMapping("/change/roll_no")
     public ResponseEntity<?> changeRollNumber(
@@ -167,6 +193,7 @@ public class V2ProfileController {
         }
     }
 
+    /** Helper extracting and resolving user ID from Bearer token header. */
     private Optional<Long> getAuthenticatedUserId(String authorization) {
         if (authorization == null
                 || !authorization.startsWith("Bearer ")) {
@@ -182,6 +209,7 @@ public class V2ProfileController {
         return apiTokenService.findUserIdByToken(token);
     }
 
+    /** Helper building standard 401 Unauthorized JSON error response. */
     private ResponseEntity<Map<String, String>> unauthorized() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of(
@@ -189,7 +217,9 @@ public class V2ProfileController {
                 ));
     }
 
+    /** DTO for API v2 full name change requests. */
     public record ChangeNameRequest(String name) {}
 
+    /** DTO for API v2 roll number change requests. */
     public record ChangeRollNumberRequest(String rollNumber) {}
 }

@@ -19,6 +19,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Controller managing cart checkout validation and order placement for website customers.
+ *
+ * <p>Key Invariants &amp; Security Controls:
+ * <ul>
+ *   <li><b>Session &amp; Account Authentication:</b> Verifies that the user has an active session and confirms
+ *       their account still exists in MySQL before proceeding with order placement.</li>
+ *   <li><b>Authoritative Server-Side Pricing:</b> Client-submitted prices are never accepted or trusted.
+ *       Unit prices are fetched directly from the database table {@code items} where {@code available = TRUE}.
+ *       If an item has been disabled or removed by an administrator, checkout is rejected immediately.</li>
+ *   <li><b>Cart Consolidation:</b> Merges duplicate item IDs submitted by the client into single line entries,
+ *       enforcing a maximum cap of 100 units per item.</li>
+ *   <li><b>Atomic Transaction Boundaries:</b> The order master record and all constituent {@code order_items}
+ *       records are persisted within a single {@link Transactional} boundary, ensuring zero orphaned records
+ *       if an insert fails.</li>
+ * </ul>
+ */
 @Controller
 public class OrderController {
 
@@ -28,12 +45,14 @@ public class OrderController {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /** Internal record for binding queried active menu items. */
     private record MenuItem(
             String id,
             String name,
             BigDecimal price
     ) {}
 
+    /** Internal record representing a validated, priced line item with quantity. */
     private record PricedItem(
             String id,
             String name,
@@ -41,6 +60,16 @@ public class OrderController {
             int quantity
     ) {}
 
+    /**
+     * Processes customer checkout submissions, validates availability, computes authoritative totals,
+     * persists the order and its line items, and displays the order bill.
+     *
+     * @param form form-backing DTO containing submitted cart items
+     * @param session the user's current HTTP session
+     * @param model Spring MVC model for rendering view attributes
+     * @return the {@code "checkout-bill"} view on success, {@code "checkout-error"} on validation failure,
+     *         or redirect to login if unauthenticated
+     */
     @PostMapping("/order/checkout")
     @Transactional
     public String checkout(
@@ -50,12 +79,14 @@ public class OrderController {
 
         Object sessionUserId = session.getAttribute("userId");
 
+        // Enforce user authentication; redirect to login with returnUrl to preserve cart context
         if (!(sessionUserId instanceof Number)) {
             return "redirect:/auth/login?returnUrl=/cart";
         }
 
         long userId = ((Number) sessionUserId).longValue();
 
+        // Ensure the session user actually exists in the database
         Integer userExists = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM users WHERE id = ?",
                 Integer.class,
@@ -73,7 +104,7 @@ public class OrderController {
             return showError(model, "Your cart is empty.");
         }
 
-        // Merge duplicate item IDs before validating and inserting.
+        // Merge duplicate item IDs and validate quantity boundaries before querying or inserting.
         Map<String, Integer> quantities = new LinkedHashMap<>();
 
         for (CheckoutForm.CartLine line : submitted) {
@@ -100,8 +131,8 @@ public class OrderController {
             quantities.put(itemId, combined);
         }
 
-        // Validate every item and obtain authoritative prices
-        // before inserting the order.
+        // Validate every item against current active inventory and obtain authoritative prices
+        // directly from the database to prevent client tampering.
         List<PricedItem> pricedItems = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
 
@@ -150,6 +181,7 @@ public class OrderController {
 
         final BigDecimal orderTotal = total;
 
+        // Insert master order with initial status PLACED
         jdbcTemplate.update(connection -> {
             var statement = connection.prepareStatement(
                     """
@@ -175,6 +207,7 @@ public class OrderController {
 
         long orderId = generatedKey.longValue();
 
+        // Insert historical line item snapshots preserving product name and purchase price
         for (PricedItem item : pricedItems) {
             jdbcTemplate.update(
                     """
@@ -191,7 +224,7 @@ public class OrderController {
             );
         }
 
-        // Prepare items with precomputed subtotals for Thymeleaf.
+        // Prepare items with precomputed subtotals for Thymeleaf view rendering
         List<Map<String, Object>> billItems = pricedItems.stream()
                 .map(item -> {
                     Map<String, Object> row = new LinkedHashMap<>();
@@ -215,10 +248,18 @@ public class OrderController {
         model.addAttribute("items", billItems);
         model.addAttribute("total", total);
 
+        // Instruct the client-side JavaScript to clear local cart state after successful order creation
         model.addAttribute("clearCart", true);
         return "checkout-bill";
     }
 
+    /**
+     * Helper method to populate an error message and route to the checkout error view.
+     *
+     * @param model the Spring MVC model
+     * @param message the explanatory error message
+     * @return the {@code "checkout-error"} view name
+     */
     private String showError(Model model, String message) {
         model.addAttribute("error", message);
         return "checkout-error";

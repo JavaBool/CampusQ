@@ -22,6 +22,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Controller managing administrative authentication, dashboard routing, and menu inventory CRUD operations.
+ *
+ * <p>Security &amp; Architectural Design:
+ * <ul>
+ *   <li><b>Privilege Isolation:</b> Completely bypasses standard servlet {@link jakarta.servlet.http.HttpSession}
+ *       in favor of an internal, in-memory {@link ConcurrentHashMap} of {@link AdminSession} instances. This isolates
+ *       student and administrative privilege contexts, preventing session pollution, elevation of privilege,
+ *       or session fixation across roles.</li>
+ *   <li><b>Timing-Attack Resistance:</b> Administrative username and password checks use {@link MessageDigest#isEqual(byte[], byte[])}
+ *       to ensure constant-time byte comparisons, eliminating side-channel timing analysis.</li>
+ *   <li><b>Hardened Session Cookies:</b> Issues {@code ADMINSESSIONID} with {@code HttpOnly=true},
+ *       {@code SameSite=Strict}, scoped strictly to {@code path="/admin"} with an 8-hour lifetime.</li>
+ *   <li><b>Opportunistic Session Eviction:</b> Inactive/expired sessions are purged from memory during
+ *       authentication attempts.</li>
+ *   <li><b>Primary Key Mutation:</b> The {@code updateItem} operation supports updating an item's primary key
+ *       {@code id} slug itself, handling unique constraint collisions by returning HTTP 409 Conflict.</li>
+ * </ul>
+ */
 @Controller
 public class AdminController {
 
@@ -59,6 +78,11 @@ public class AdminController {
     // Dashboard
     // ---------------------------------------------------------
 
+    /**
+     * Renders the administrative management dashboard page.
+     *
+     * @return the {@code "admin"} Thymeleaf template
+     */
     @GetMapping("/admin")
     public String adminPage() {
         return "admin";
@@ -68,6 +92,15 @@ public class AdminController {
     // Admin login
     // ---------------------------------------------------------
 
+    /**
+     * Authenticates administrator credentials and establishes an isolated administrative session cookie.
+     *
+     * <p>Mitigates timing attacks by using constant-time byte comparisons on credentials,
+     * and sets an {@code HttpOnly}, {@code SameSite=Strict} cookie scoped exclusively to {@code /admin}.
+     *
+     * @param request JSON request containing admin username and password
+     * @return 200 OK with session cookie, 400 Bad Request on missing fields, or 401 Unauthorized
+     */
     @PostMapping("/admin/api/login")
     @ResponseBody
     public ResponseEntity<?> login(
@@ -84,6 +117,7 @@ public class AdminController {
                     ));
         }
 
+        // Constant-time comparisons mitigate side-channel timing analysis
         boolean validUsername = constantTimeEquals(
                 request.username(), adminUsername);
 
@@ -132,6 +166,13 @@ public class AdminController {
     // Admin logout
     // ---------------------------------------------------------
 
+    /**
+     * Terminates the current administrator session, removing it from the session registry
+     * and clearing the {@code ADMINSESSIONID} cookie.
+     *
+     * @param request the current HTTP request containing the session cookie
+     * @return 200 OK with an expired cookie header
+     */
     @PostMapping("/admin/api/logout")
     @ResponseBody
     public ResponseEntity<?> logout(
@@ -161,6 +202,13 @@ public class AdminController {
     // Read menu items
     // ---------------------------------------------------------
 
+    /**
+     * Returns the full inventory of menu items (both available and unavailable) for administrative management.
+     *
+     * @param request the HTTP request validated for admin authentication
+     * @return list of all menu items in the database
+     * @throws ResponseStatusException 401 Unauthorized if admin cookie is missing or invalid
+     */
     @GetMapping("/admin/api/items")
     @ResponseBody
     public List<MenuItem> getItems(
@@ -189,6 +237,14 @@ public class AdminController {
     // Add menu item
     // ---------------------------------------------------------
 
+    /**
+     * Creates a new menu item in the catalog.
+     *
+     * @param request validated item payload
+     * @param httpRequest current HTTP request for admin authorization
+     * @return 201 Created on success, 400 Bad Request on validation error, or 409 Conflict if ID exists
+     * @throws ResponseStatusException 401 Unauthorized if unauthenticated
+     */
     @PostMapping("/admin/api/items")
     @ResponseBody
     public ResponseEntity<?> createItem(
@@ -231,6 +287,15 @@ public class AdminController {
     // Update menu item, including its ID
     // ---------------------------------------------------------
 
+    /**
+     * Updates an existing menu item, including its primary key identifier slug.
+     *
+     * @param oldId the current item identifier
+     * @param request the updated item payload
+     * @param httpRequest current HTTP request for admin authorization
+     * @return 200 OK on success, 404 Not Found if item does not exist, or 409 Conflict if new ID is taken
+     * @throws ResponseStatusException 401 Unauthorized if unauthenticated
+     */
     @PutMapping("/admin/api/items/{oldId}")
     @ResponseBody
     public ResponseEntity<?> updateItem(
@@ -278,6 +343,14 @@ public class AdminController {
     // Delete menu item
     // ---------------------------------------------------------
 
+    /**
+     * Deletes a menu item from the catalog by ID.
+     *
+     * @param id the item ID to delete
+     * @param request current HTTP request for admin authorization
+     * @return 200 OK on deletion, or 404 Not Found
+     * @throws ResponseStatusException 401 Unauthorized if unauthenticated
+     */
     @DeleteMapping("/admin/api/items/{id}")
     @ResponseBody
     public ResponseEntity<?> deleteItem(
@@ -302,6 +375,11 @@ public class AdminController {
     // Independent admin authentication helpers
     // ---------------------------------------------------------
 
+    /**
+     * Validates that the request carries a valid, non-expired administrator session cookie.
+     *
+     * @throws ResponseStatusException 401 Unauthorized if authentication fails
+     */
     private void requireAdmin(HttpServletRequest request) {
 
         String sessionId = getAdminSessionId(request);
@@ -332,6 +410,9 @@ public class AdminController {
         }
     }
 
+    /**
+     * Extracts and validates the length of the {@code ADMINSESSIONID} cookie from request headers.
+     */
     private String getAdminSessionId(HttpServletRequest request) {
 
         Cookie[] cookies = request.getCookies();
@@ -357,6 +438,9 @@ public class AdminController {
         return null;
     }
 
+    /**
+     * Generates a 256-bit cryptographically secure session ID for the admin registry.
+     */
     private String generateSessionId() {
 
         byte[] bytes = new byte[32];
@@ -367,6 +451,9 @@ public class AdminController {
                 .encodeToString(bytes);
     }
 
+    /**
+     * Opportunistically removes expired administrator sessions from the concurrent session map.
+     */
     private void removeExpiredSessions() {
 
         long now = System.currentTimeMillis();
@@ -380,6 +467,12 @@ public class AdminController {
     // Menu item validation
     // ---------------------------------------------------------
 
+    /**
+     * Validates menu item field constraints including lengths, non-negativity, and decimal precision.
+     *
+     * @param item the item request DTO
+     * @throws ResponseStatusException 400 Bad Request if validation constraints fail
+     */
     private void validateItem(ItemRequest item) {
 
         if (item == null
@@ -412,12 +505,14 @@ public class AdminController {
         }
     }
 
+    /** Converts blank strings to SQL null to prevent empty string storage in nullable columns. */
     private String blankToNull(String value) {
         return value == null || value.isBlank()
                 ? null
                 : value.trim();
     }
 
+    /** Constant-time byte-level string comparison to defend against timing attacks. */
     private boolean constantTimeEquals(String a, String b) {
 
         return MessageDigest.isEqual(
@@ -425,23 +520,35 @@ public class AdminController {
                 b.getBytes(StandardCharsets.UTF_8)
         );
     }
+
+    /**
+     * Public gateway allowing sibling controllers (e.g. {@link AdminOrderController}) to verify
+     * the administrative session cookie.
+     *
+     * @param request the HTTP request
+     * @throws ResponseStatusException 401 Unauthorized if not authenticated as admin
+     */
     public void requireAdminAccess(HttpServletRequest request) {
         requireAdmin(request);
     }
+
     // ---------------------------------------------------------
     // DTOs and admin session record
     // ---------------------------------------------------------
 
+    /** Internal record storing an authenticated administrator username and expiration epoch. */
     private record AdminSession(
             String username,
             long expiresAt
     ) {}
 
+    /** DTO for administrator login requests. */
     public record LoginRequest(
             String username,
             String password
     ) {}
 
+    /** DTO for creating or updating a menu catalog item. */
     public record ItemRequest(
             String id,
             String name,
@@ -452,6 +559,7 @@ public class AdminController {
             boolean available
     ) {}
 
+    /** Projection record representing a catalog item in API responses. */
     public record MenuItem(
             String id,
             String name,

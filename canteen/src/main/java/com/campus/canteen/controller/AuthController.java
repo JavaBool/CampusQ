@@ -11,6 +11,12 @@ import org.springframework.web.util.UriUtils;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+/**
+ * REST controller providing session-based authentication endpoints under API version 1 ({@code /api/v1/auth}).
+ *
+ * <p>Intended for browser AJAX requests and web frontend interactions that rely on standard HTTP cookies
+ * and servlet sessions.
+ */
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -21,6 +27,13 @@ public class AuthController {
         this.authService = authService;
     }
 
+    /**
+     * Registers a new student account, validating password confirmation and unique identity constraints.
+     *
+     * @param request JSON payload containing registration details and password confirmation
+     * @param returnUrl optional redirect destination URL to preserve across sign-in
+     * @return 201 Created with signin redirect URL, 400 Bad Request on validation error, or 409 Conflict on duplicate email/roll
+     */
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(
             @RequestBody RegisterRequest request, @RequestParam(required = false) String returnUrl) {
@@ -55,6 +68,7 @@ public class AuthController {
             );
             String destination = "/";
 
+            // Sanitize returnUrl against open redirects and header injection
             if (returnUrl != null
                     && returnUrl.startsWith("/")
                     && !returnUrl.startsWith("//")
@@ -79,6 +93,15 @@ public class AuthController {
         }
     }
 
+    /**
+     * Signs in a student, invalidating any preexisting session to mitigate session fixation,
+     * and binds user attributes to a new HTTP session.
+     *
+     * @param request JSON payload with email and plaintext password
+     * @param returnUrl optional target URL
+     * @param httpRequest current HTTP request for session manipulation
+     * @return 200 OK with sanitized redirectUrl, 400 Bad Request, or 401 Unauthorized
+     */
     @PostMapping("/signin")
     public ResponseEntity<Map<String, String>> signIn(
             @RequestBody SignInRequest request, @RequestParam(required = false) String returnUrl, HttpServletRequest httpRequest) {
@@ -102,11 +125,14 @@ public class AuthController {
         }
         var user = authService.findByEmail(request.email())
                 .orElseThrow();
+
+        // Invalidate old session to mitigate session fixation attacks
         HttpSession oldSession = httpRequest.getSession(false);
         if (oldSession != null) {
             oldSession.invalidate();
         }
 
+        // Establish clean session with user attributes
         HttpSession session = httpRequest.getSession(true);
 
         session.setAttribute("userId", user.id());
@@ -115,6 +141,7 @@ public class AuthController {
 
         String destination = "/";
 
+        // Sanitize returnUrl to prevent open redirects
         if (returnUrl != null
                 && returnUrl.startsWith("/")
                 && !returnUrl.startsWith("//")
@@ -129,6 +156,13 @@ public class AuthController {
                 "redirectUrl", destination
         ));
     }
+
+    /**
+     * Invalidates the caller's HTTP session.
+     *
+     * @param httpRequest current HTTP request
+     * @return 200 OK confirming logout
+     */
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(
             HttpServletRequest httpRequest) {
@@ -146,6 +180,13 @@ public class AuthController {
                 )
         );
     }
+
+    /**
+     * Inspects the current HTTP session and returns the user's authentication status and identity details.
+     *
+     * @param session the user's HTTP session
+     * @return 200 OK with authenticated user profile details, or 401 Unauthorized
+     */
     @GetMapping("/session")
     public ResponseEntity<Map<String, Object>> getSession(
             HttpSession session) {
@@ -167,6 +208,8 @@ public class AuthController {
                 )
         );
     }
+
+    /** DTO for student registration requests. */
     public record RegisterRequest(
             String fullName,
             String email,
@@ -175,6 +218,7 @@ public class AuthController {
             String confirmPassword
     ) {}
 
+    /** DTO for student signin requests. */
     public record SignInRequest(
             String email,
             String password

@@ -18,6 +18,26 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
 
+/**
+ * Controller managing the administrative kitchen queue and order fulfillment workflow.
+ *
+ * <p>Key Architecture &amp; Business Invariants:
+ * <ul>
+ *   <li><b>Shared Admin Authentication:</b> Reuses {@link AdminController#requireAdminAccess(HttpServletRequest)}
+ *       to enforce consistent cookie-based administrative authentication across admin controllers.</li>
+ *   <li><b>Paid-Only Queue Filtering:</b> Orders appear in the kitchen fulfillment list only if their associated
+ *       payment has reached {@code p.status = 'PAID'}. Unpaid checkouts are excluded from food preparation.</li>
+ *   <li><b>Single-Pass Subquery Aggregation:</b> Uses MySQL {@code GROUP_CONCAT} in a correlated subquery to collapse
+ *       multiple line items into a single human-readable summary string (e.g. "Masala Dosa × 2, Filter Coffee × 1")
+ *       without generating N+1 queries.</li>
+ *   <li><b>Priority-Based Queue Ordering:</b> Employs a custom SQL {@code CASE} expression to prioritize active
+ *       preparation stages: {@code PLACED} (1) &rarr; {@code PREPARING} (2) &rarr; {@code READY} (3) &rarr;
+ *       {@code COMPLETED} (4) &rarr; {@code CANCELLED} (5), followed by chronological FIFO ordering.</li>
+ *   <li><b>Database-Enforced State Machine:</b> Status progressions are guarded directly in the atomic SQL {@code UPDATE}
+ *       statement to guarantee that invalid state transitions (e.g. going from {@code PLACED} directly to {@code COMPLETED})
+ *       are rejected even under concurrent administrative actions.</li>
+ * </ul>
+ */
 @Controller
 public class AdminOrderController {
 
@@ -31,6 +51,18 @@ public class AdminOrderController {
         this.adminController = adminController;
     }
 
+    /**
+     * Projection record representing a paid order in the administrative kitchen queue.
+     *
+     * @param id order ID
+     * @param customerName student full name
+     * @param rollNumber student academic roll number
+     * @param totalAmount aggregate amount paid
+     * @param orderStatus current fulfillment state
+     * @param transactionId cryptographic transaction identifier
+     * @param createdAt timestamp when the order was placed
+     * @param items aggregated comma-separated line items summary
+     */
     public record PaidOrder(
             long id,
             String customerName,
@@ -46,6 +78,14 @@ public class AdminOrderController {
     // View all paid orders
     // ---------------------------------------------------------
 
+    /**
+     * Renders the administrative order management dashboard containing all paid orders.
+     *
+     * @param request HTTP request validated for admin credentials
+     * @param model Spring MVC view model
+     * @return the {@code "admin-orders"} Thymeleaf view name
+     * @throws ResponseStatusException 401 Unauthorized if admin cookie is missing or invalid
+     */
     @GetMapping("/admin/orders")
     public String paidOrders(
             HttpServletRequest request,
@@ -54,6 +94,7 @@ public class AdminOrderController {
         // Uses the existing ADMINSESSIONID authentication.
         adminController.requireAdminAccess(request);
 
+        // Retrieve only paid orders, collapsing child line items via GROUP_CONCAT
         List<PaidOrder> orders = jdbcTemplate.query(
                 """
                 SELECT
@@ -119,6 +160,22 @@ public class AdminOrderController {
     // Update paid order status
     // ---------------------------------------------------------
 
+    /**
+     * Advances an order through the fulfillment state machine.
+     *
+     * <p>Permitted transitions:
+     * <ul>
+     *   <li>{@code PLACED} &rarr; {@code PREPARING} or {@code CANCELLED}</li>
+     *   <li>{@code PREPARING} &rarr; {@code READY} or {@code CANCELLED}</li>
+     *   <li>{@code READY} &rarr; {@code COMPLETED} or {@code CANCELLED}</li>
+     * </ul>
+     *
+     * @param orderId the primary key of the order
+     * @param status the destination status
+     * @param request the HTTP request for admin authorization
+     * @param redirectAttributes flash attributes to communicate success or error after redirect
+     * @return redirect view string to {@code /admin/orders}
+     */
     @PostMapping("/admin/orders/{orderId}/status")
     @Transactional
     public String updateStatus(
@@ -146,7 +203,7 @@ public class AdminOrderController {
             return "redirect:/admin/orders";
         }
 
-        // Update only if the order is paid and the transition is valid.
+        // Update only if the order is paid and the transition satisfies the state machine rules
         int updated = jdbcTemplate.update(
                 """
                 UPDATE orders o

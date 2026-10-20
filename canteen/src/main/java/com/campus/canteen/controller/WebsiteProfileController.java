@@ -13,6 +13,22 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+/**
+ * Controller handling in-place profile updates (name, roll number, password) from the website profile page.
+ *
+ * <p>Security &amp; Architectural Features:
+ * <ul>
+ *   <li><b>Token-Backed Session Verification:</b> Validates authentication via {@link #getAuthenticatedUserId(HttpSession)},
+ *       which resolves the session's {@code apiToken} attribute against MySQL. This prevents unauthorized actions
+ *       if the token was revoked externally.</li>
+ *   <li><b>Seamless Token Renewal on Password Change:</b> {@link AuthService#changePassword(long, String, String)}
+ *       revokes all existing API tokens for the user upon a successful password change. This controller generates
+ *       a brand-new replacement token and stores it into the current {@link HttpSession}, keeping the active browser
+ *       logged in while successfully terminating any external sessions.</li>
+ *   <li><b>Constraint Translation:</b> Catches database {@link DataIntegrityViolationException} on duplicate
+ *       student roll numbers and converts it to a clean HTTP 409 Conflict status.</li>
+ * </ul>
+ */
 @RestController
 public class WebsiteProfileController {
 
@@ -26,6 +42,13 @@ public class WebsiteProfileController {
         this.apiTokenService = apiTokenService;
     }
 
+    /**
+     * Updates the full name for the logged-in student.
+     *
+     * @param request JSON body containing the updated full name
+     * @param session the user's HTTP session
+     * @return 200 OK with the updated name, 400 Bad Request on invalid input, or 401 Unauthorized
+     */
     @PostMapping("/profile/change/name")
     public ResponseEntity<Map<String, String>> changeName(
             @RequestBody ChangeNameRequest request,
@@ -66,6 +89,13 @@ public class WebsiteProfileController {
         ));
     }
 
+    /**
+     * Updates the unique student roll number for the logged-in user.
+     *
+     * @param request JSON body containing the new roll number
+     * @param session the user's HTTP session
+     * @return 200 OK on success, 409 Conflict if roll number is already claimed, or 401 Unauthorized
+     */
     @PostMapping("/profile/change/roll-no")
     public ResponseEntity<Map<String, String>> changeRollNumber(
             @RequestBody ChangeRollNumberRequest request,
@@ -108,6 +138,9 @@ public class WebsiteProfileController {
         ));
     }
 
+    /**
+     * Helper resolving authenticated user ID by verifying the session's {@code apiToken} in MySQL.
+     */
     private Long getAuthenticatedUserId(HttpSession session) {
         Object tokenAttribute = session.getAttribute("apiToken");
 
@@ -120,12 +153,22 @@ public class WebsiteProfileController {
                 .orElse(null);
     }
 
+    /** Helper constructing error response entities. */
     private ResponseEntity<Map<String, String>> error(
             HttpStatus status, String message) {
         return ResponseEntity.status(status).body(
                 Map.of("message", message)
         );
     }
+
+    /**
+     * Changes the user's password, verifying their current password first, and immediately
+     * issues a replacement token to preserve the active browser session.
+     *
+     * @param request JSON body containing current password and new password
+     * @param session the user's HTTP session
+     * @return 200 OK on success, 400 Bad Request on invalid credentials, or 401 Unauthorized
+     */
     @PostMapping("/profile/change-password")
     public ResponseEntity<Map<String, String>> changePassword(
             @RequestBody ChangePasswordRequest request,
@@ -165,11 +208,15 @@ public class WebsiteProfileController {
         }
     }
 
+    /** DTO for password change requests. */
     public record ChangePasswordRequest(
             String currentPassword,
             String newPassword
     ) {}
+
+    /** DTO for student name update requests. */
     public record ChangeNameRequest(String fullName) {}
 
+    /** DTO for student roll number update requests. */
     public record ChangeRollNumberRequest(String rollNumber) {}
 }

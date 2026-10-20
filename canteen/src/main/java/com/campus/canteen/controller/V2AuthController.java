@@ -8,6 +8,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * REST controller implementing stateless Bearer token authentication under API version 2 ({@code /api/v2/auth}).
+ *
+ * <p>Designed for mobile clients, external integrations, and single-page applications that do not use cookies.
+ * Authentication state is maintained via cryptographically random Bearer tokens managed by {@link ApiTokenService}.
+ */
 @RestController
 @RequestMapping("/api/v2/auth")
 public class V2AuthController {
@@ -22,6 +28,12 @@ public class V2AuthController {
         this.apiTokenService = apiTokenService;
     }
 
+    /**
+     * Authenticates user credentials and issues a stateless 5-day Bearer token.
+     *
+     * @param request JSON payload containing email and plaintext password
+     * @return 200 OK with Bearer token, 400 Bad Request on missing fields, or 401 Unauthorized
+     */
     // POST /api/v2/auth/login
     @PostMapping("/login")
     public ResponseEntity<?> signIn(@RequestBody SignInRequest request) {
@@ -46,6 +58,12 @@ public class V2AuthController {
         return ResponseEntity.ok(Map.of("token", token));
     }
 
+    /**
+     * Validates an incoming Bearer token against database digests, checking expiration and revocation.
+     *
+     * @param authorization the {@code Authorization: Bearer <token>} header
+     * @return 200 OK with {@code {"valid": true|false}}
+     */
     // POST /api/v2/auth/validate
     @PostMapping("/validate")
     public ResponseEntity<Map<String, Boolean>> validate(
@@ -60,6 +78,12 @@ public class V2AuthController {
         return ResponseEntity.ok(Map.of("valid", valid));
     }
 
+    /**
+     * Revokes a Bearer token in the database, immediately terminating its validity.
+     *
+     * @param authorization the {@code Authorization: Bearer <token>} header
+     * @return 200 OK if successfully revoked, 400 Bad Request if missing, or 401 Unauthorized if invalid
+     */
     // POST /api/v2/auth/logout
     @PostMapping("/logout")
     public ResponseEntity<Map<String, Boolean>> logout(
@@ -84,6 +108,10 @@ public class V2AuthController {
 
         return ResponseEntity.ok(Map.of("success", true));
     }
+
+    /**
+     * Helper to extract the token substring from a Bearer Authorization header.
+     */
     private String extractBearerToken(String authorization) {
         if (authorization == null
                 || !authorization.startsWith("Bearer ")) {
@@ -94,5 +122,6 @@ public class V2AuthController {
         return token.isEmpty() ? null : token;
     }
 
+    /** DTO for API v2 signin requests. */
     public record SignInRequest(String email, String password) {}
 }

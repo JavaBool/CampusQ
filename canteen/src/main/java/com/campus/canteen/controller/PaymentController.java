@@ -15,6 +15,25 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Controller orchestrating the multi-step payment lifecycle for orders.
+ *
+ * <p>Payment Flow &amp; Security Architecture:
+ * <ul>
+ *   <li><b>Step 2 — Bill Generation ({@code POST /payment/bill}):</b> Requires an active user session.
+ *       Applies pessimistic row locking ({@code SELECT ... FOR UPDATE}) on the order record to eliminate
+ *       race conditions during concurrent payment initialization. Recalculates totals directly from immutable
+ *       {@code order_items} snapshots. Provides idempotency: re-requesting a bill for an existing order reuses
+ *       the established payment transaction rather than duplicating records.</li>
+ *   <li><b>Step 3 — Payment Execution ({@code POST /payment/pay}):</b> Simulates an external payment gateway callback.
+ *       <b>Deliberately unauthenticated:</b> External webhooks and return redirects cannot rely on user session state.
+ *       Instead, security is enforced via cryptographic 256-bit transaction tokens and atomic SQL status transitions
+ *       ({@code WHERE status = 'PENDING'}). Once marked {@code PAID}, transactions cannot be re-executed.</li>
+ *   <li><b>Step 4 — Confirmation Display ({@code POST /order/confirmation}):</b> Renders the verified receipt.
+ *       Also intentionally unauthenticated by design, verifying authenticity exclusively by confirming that
+ *       the {@code orderId} and {@code transactionId} match a record in {@code payments} with status {@code PAID}.</li>
+ * </ul>
+ */
 @Controller
 public class PaymentController {
 
@@ -25,6 +44,11 @@ public class PaymentController {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Generates a cryptographically random transaction identifier prefixed with {@code CB-}.
+     *
+     * @return a unique 256-bit URL-safe Base64 transaction ID
+     */
     private String generateTransactionId() {
         byte[] bytes = new byte[32];
         secureRandom.nextBytes(bytes);
@@ -34,6 +58,18 @@ public class PaymentController {
                 .encodeToString(bytes);
     }
 
+    /**
+     * Initializes a pending payment for an existing order and renders the payment bill.
+     *
+     * <p>Pessimistic locking ({@code FOR UPDATE}) is held on the order row during validation to prevent
+     * concurrent requests from creating duplicate payment records. If a transaction has already been
+     * initialized for this order, it is reused idempotently.
+     *
+     * @param orderId the primary key ID of the order to bill
+     * @param session the user's HTTP session
+     * @param model the view model
+     * @return the {@code "payment-bill"} view name, or an error view
+     */
     // STEP 2: Create a pending payment and display the bill.
     @PostMapping("/payment/bill")
     @Transactional
@@ -50,7 +86,7 @@ public class PaymentController {
 
         long userId = ((Number) sessionUserId).longValue();
 
-        // Lock the order while checking or creating its payment.
+        // Lock the order row exclusively while inspecting or associating its payment
         List<Map<String, Object>> orders = jdbcTemplate.queryForList(
                 """
                 SELECT id, user_id, payment_id, transaction_id
@@ -68,7 +104,7 @@ public class PaymentController {
 
         Map<String, Object> order = orders.get(0);
 
-        // Calculate the bill from the stored item snapshots.
+        // Recalculate bill total authoritatively from stored line item snapshots
         Integer itemCount = jdbcTemplate.queryForObject(
                 """
                 SELECT COUNT(*)
@@ -100,7 +136,7 @@ public class PaymentController {
             return showError(model, "Invalid order total.");
         }
 
-        // Reuse the existing transaction on a repeated bill request.
+        // Idempotency check: Reuse existing transaction on repeated bill requests
         if (order.get("transaction_id") != null) {
             String existingTransaction =
                     order.get("transaction_id").toString();
@@ -150,7 +186,7 @@ public class PaymentController {
             );
         }
 
-        // The total must be positive because payments has a CHECK constraint.
+        // Create a new PENDING payment record with cryptographic transaction ID
         String transactionId = generateTransactionId();
 
         jdbcTemplate.update(
@@ -170,6 +206,7 @@ public class PaymentController {
                 transactionId
         );
 
+        // Associate payment with order only if no prior payment was linked
         int updated = jdbcTemplate.update(
                 """
                 UPDATE orders
@@ -203,6 +240,9 @@ public class PaymentController {
         );
     }
 
+    /**
+     * Helper to render payment-bill template with necessary model attributes.
+     */
     private String renderPaymentBill(
             long orderId,
             String transactionId,
@@ -218,6 +258,18 @@ public class PaymentController {
         return "payment-bill";
     }
 
+    /**
+     * Simulates payment gateway execution, transitioning a PENDING payment to PAID.
+     *
+     * <p>Non-obvious design choice:
+     * This endpoint is <b>intentionally unauthenticated</b> (no session check) to simulate real-world
+     * asynchronous payment gateway callbacks / webhooks that originate outside the user's browser session.
+     * Atomicity is guaranteed by updating {@code status = 'PAID'} strictly where {@code status = 'PENDING'}.
+     *
+     * @param transactionId the cryptographic transaction ID
+     * @param model the view model
+     * @return redirect confirmation view template, or error view
+     */
     // STEP 3: Simulated payment. Intentionally no session validation.
     @PostMapping("/payment/pay")
     @Transactional
@@ -229,6 +281,7 @@ public class PaymentController {
             return showError(model, "Transaction ID is required.");
         }
 
+        // Atomic transition: Update only if status is strictly PENDING to prevent double-charging or replays
         int updated = jdbcTemplate.update(
                 """
                 UPDATE payments
@@ -276,6 +329,19 @@ public class PaymentController {
         return "payment-redirect-confirmation";
     }
 
+    /**
+     * Verifies and displays the final order payment confirmation receipt.
+     *
+     * <p>Non-obvious design choice:
+     * Like {@code /payment/pay}, this endpoint is <b>intentionally unauthenticated</b> to handle redirects
+     * returning from simulated or external payment gateways. Authenticity is validated through cryptographic
+     * matching of {@code orderId}, {@code transactionId}, and verification of {@code p.status = 'PAID'}.
+     *
+     * @param orderId the order ID
+     * @param transactionId the matching transaction ID
+     * @param model the view model
+     * @return the {@code "order-confirmation"} view on success, or {@code "checkout-error"}
+     */
     // STEP 4: Confirm the paid order. Intentionally no session validation.
     @PostMapping("/order/confirmation")
     public String confirmation(
@@ -283,6 +349,7 @@ public class PaymentController {
             @RequestParam String transactionId,
             Model model) {
 
+        // Validate that both order and payment are linked, match the transaction token, and are marked PAID
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 """
                 SELECT o.id AS orderId,

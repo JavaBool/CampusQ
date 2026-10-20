@@ -7,6 +7,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 import java.util.List;
 
+/**
+ * Controller responsible for serving the public food and beverage menu page.
+ *
+ * <p>Queries the database directly using {@link JdbcTemplate} to retrieve all currently
+ * active and available items, grouped and ordered by category and item name for display in
+ * the {@code menu.html} Thymeleaf template.
+ */
 @Controller
 public class MenuController {
 
@@ -16,6 +23,15 @@ public class MenuController {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Renders the canteen menu page with currently available items.
+     *
+     * <p>Only items flagged with {@code available = TRUE} are retrieved, preventing students
+     * from viewing or ordering items that are currently out of stock.
+     *
+     * @param model the Spring MVC model for passing data to the view
+     * @return the Thymeleaf view template name {@code "menu"}
+     */
     @GetMapping("/menu")
     public String menu(Model model) {
         List<MenuItem> items = jdbcTemplate.query("""
@@ -39,6 +55,17 @@ public class MenuController {
         return "menu";
     }
 
+    /**
+     * Immutable projection record representing an available menu item for view presentation.
+     *
+     * @param id the unique alphanumeric slug of the item
+     * @param name human-readable item title
+     * @param description detailed description or ingredients
+     * @param category grouping category (e.g., Breakfast, Beverages)
+     * @param price unit retail price
+     * @param imageLink path or URL to the display image
+     * @param available availability flag
+     */
     public record MenuItem(
             String id,
             String name,
