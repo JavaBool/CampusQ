@@ -7,7 +7,8 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.web.util.UriUtils;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RestController
@@ -22,7 +23,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(
-            @RequestBody RegisterRequest request) {
+            @RequestBody RegisterRequest request, @RequestParam(required = false) String returnUrl) {
 
         if (request.fullName() == null || request.fullName().isBlank()
                 || request.email() == null || request.email().isBlank()
@@ -52,11 +53,22 @@ public class AuthController {
                     request.rollNumber(),
                     request.password()
             );
+            String destination = "/";
 
+            if (returnUrl != null
+                    && returnUrl.startsWith("/")
+                    && !returnUrl.startsWith("//")
+                    && !returnUrl.contains("\\")
+                    && !returnUrl.contains("\r")
+                    && !returnUrl.contains("\n")) {
+                destination = returnUrl;
+            }
+            String redirectUrl = "/auth/login?returnUrl=" +
+                    UriUtils.encodeQueryParam(destination, StandardCharsets.UTF_8);
             return ResponseEntity.status(HttpStatus.CREATED).body(
                     Map.of(
                             "message", "Account created successfully. Please sign in.",
-                            "redirectUrl", "/login"
+                            "redirectUrl", redirectUrl
                     )
             );
 
@@ -69,7 +81,7 @@ public class AuthController {
 
     @PostMapping("/signin")
     public ResponseEntity<Map<String, String>> signIn(
-            @RequestBody SignInRequest request, HttpServletRequest httpRequest) {
+            @RequestBody SignInRequest request, @RequestParam(required = false) String returnUrl, HttpServletRequest httpRequest) {
 
         if (request.email() == null || request.email().isBlank()
                 || request.password() == null || request.password().isBlank()) {
@@ -101,10 +113,21 @@ public class AuthController {
         session.setAttribute("userEmail", user.email());
         session.setAttribute("fullName", user.fullName());
 
-        return ResponseEntity.ok(
-                Map.of("message", "Credentials verified successfully.",
-                        "redirectUrl","/")
-        );
+        String destination = "/";
+
+        if (returnUrl != null
+                && returnUrl.startsWith("/")
+                && !returnUrl.startsWith("//")
+                && !returnUrl.contains("\\")
+                && !returnUrl.contains("\r")
+                && !returnUrl.contains("\n")) {
+            destination = returnUrl;
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Login successful.",
+                "redirectUrl", destination
+        ));
     }
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(
@@ -119,7 +142,7 @@ public class AuthController {
         return ResponseEntity.ok(
                 Map.of(
                         "message", "Logged out successfully.",
-                        "redirectUrl", "/login"
+                        "redirectUrl", "/"
                 )
         );
     }

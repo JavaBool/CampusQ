@@ -197,8 +197,9 @@
 <body>
 <nav class="navbar d-flex justify-content-between align-items-center">
     <a class="brand" th:href="@{/}">Campus<span>Bite.</span></a>
-    <a class="nav-link-custom" th:href="@{/login}">
-        Already a member? Sign in →
+    <a th:href="@{/auth/login(returnUrl=${param.returnUrl})}"
+       class="text-link">
+        Sign in
     </a>
 </nav>
 
@@ -273,7 +274,10 @@
 
             <p class="login-text">
                 Already have an account?
-                <a th:href="@{/login}" class="text-link">Sign in</a>
+                <a th:href="@{/auth/login(returnUrl=${param.returnUrl})}"
+                   class="text-link">
+                    Sign in
+                </a>
             </p>
 
             <p class="terms-note">CAMPUSBITE · MADE FOR CAMPUS LIFE</p>
@@ -312,7 +316,9 @@
         registerButton.textContent = "Creating account…";
 
         try {
-            const response = await fetch("/api/v1/auth/register", {
+            const params = new URLSearchParams(window.location.search);
+            const returnUrl = params.get("returnUrl") || "/";
+            const response = await fetch(`/api/v1/auth/register?returnUrl=${encodeURIComponent(returnUrl)}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

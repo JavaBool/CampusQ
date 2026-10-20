@@ -13,7 +13,54 @@
     <a class="brand" th:href="@{/}" href="/"><span class="brand-mark">cb</span><span>campus<span class="brand-accent">bite</span><small>YOUR CAMPUS. YOUR CRAVINGS.</small></span></a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
     <div class="collapse navbar-collapse" id="mainNav"><div class="navbar-nav mx-auto nav-links"><a class="nav-link" th:href="@{/}" href="/">Home</a><a class="nav-link active" th:href="@{/menu}" href="/menu">Explore menu</a><a class="nav-link" th:href="@{/#how-it-works}" href="/#how-it-works">How it works</a></div>
-        <div class="nav-actions"><a class="cart-link" th:href="@{/cart}" href="/cart"><span class="cart-icon">▱</span> Cart <span class="cart-count" id="navCartCount">0</span></a><a class="btn btn-dark rounded-pill px-4" th:href="@{/login}" href="/login">Sign in <span>↗</span></a></div></div>
+
+        <div class="nav-actions">
+            <a class="cart-link" th:href="@{/cart}" href="/cart">
+                <span class="cart-icon">▱</span> Cart
+                <span class="cart-count" id="navCartCount">0</span>
+            </a>
+
+            <!-- Not logged in -->
+            <a th:if="${session.userId == null}"
+               class="btn btn-dark rounded-pill px-4"
+               th:href="@{/auth/login(returnUrl='/menu')}" href="/auth/login?returnUrl=/menu">
+                Sign in <span>↗</span>
+            </a>
+
+            <!-- Logged in -->
+            <div th:if="${session.userId != null}" class="dropdown">
+                <button class="btn btn-dark rounded-pill px-4 dropdown-toggle"
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        th:text="${session.fullName}">
+                    Profile
+                </button>
+
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" th:href="@{/profile}" href="/profile">
+                            My Profile
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" th:href="@{/orders}" href="/orders">
+                            My Orders
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item text-danger"
+                           th:href="@{/auth/logout}"
+                           href="/auth/logout">
+                            Sign out
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
 </nav></header>
 
 <main class="container page-main">

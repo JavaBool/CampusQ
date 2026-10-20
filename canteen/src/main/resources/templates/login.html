@@ -253,7 +253,7 @@
                                type="checkbox" id="rememberMe">
                         Remember me
                     </label>
-                    <a th:href="@{/forgot-password}" class="text-link">
+                    <a th:href="@{/auth/forgot-password}" class="text-link">
                         Forgot password?
                     </a>
                 </div>
@@ -263,10 +263,15 @@
                 </button>
             </form>
 
+
             <p class="signup-text">
                 New to CampusBite?
-                <a th:href="@{/register}" class="text-link">Create an account</a>
+                <a th:href="@{/auth/register(returnUrl=${param.returnUrl})}"
+                   class="text-link">
+                    Create an account
+                </a>
             </p>
+
 
             <p class="footer-note">CAMPUSBITE · MADE FOR CAMPUS LIFE</p>
         </div>
@@ -290,7 +295,9 @@
         loginButton.textContent = "Signing in…";
 
         try {
-            const response = await fetch("/api/v1/auth/signin", {
+            const params = new URLSearchParams(window.location.search);
+            const returnUrl = params.get("returnUrl") || "/";
+            const response = await fetch(`/api/v1/auth/signin?returnUrl=${encodeURIComponent(returnUrl)}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -314,6 +321,7 @@
             showLoginMessage(result.message || "Sign-in successful.", "success");
 
             if (result.redirectUrl) {
+                window.location.href = result.redirectUrl;
                 window.location.assign(result.redirectUrl);
             }
         } catch (error) {

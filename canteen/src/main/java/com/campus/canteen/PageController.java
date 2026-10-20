@@ -11,22 +11,24 @@ public class PageController {
     public String home() {
         return "index";
     }
-
     @GetMapping("/menu")
     public String menu() {
         return "menu";
     }
-
     @GetMapping("/cart")
     public String cart() {
         return "cart";
     }
-    @GetMapping("/login")
+    @GetMapping("/auth/login")
     public String login(){
         return "login";
     }
-    @GetMapping("/register")
+    @GetMapping("/auth/register")
     public String register() {
         return "register";
+    }
+    @GetMapping("/auth/logout")
+    public String logout(){
+        return "logout";
     }
 }
