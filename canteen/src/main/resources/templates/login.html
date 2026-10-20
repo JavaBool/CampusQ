@@ -297,7 +297,7 @@
         try {
             const params = new URLSearchParams(window.location.search);
             const returnUrl = params.get("returnUrl") || "/";
-            const response = await fetch(`/api/v1/auth/signin?returnUrl=${encodeURIComponent(returnUrl)}`, {
+            const response = await fetch(`/auth/login?returnUrl=${encodeURIComponent(returnUrl)}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

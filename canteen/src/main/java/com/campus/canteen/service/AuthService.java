@@ -21,7 +21,26 @@ public class AuthService {
         this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoder = passwordEncoder;
     }
+    public Optional<UserDetails> findById(long id) {
+        String sql = """
+        SELECT id, full_name, email, roll_number
+        FROM users
+        WHERE id = ?
+        """;
 
+        return jdbcTemplate.query(sql, rs -> {
+            if (!rs.next()) {
+                return Optional.empty();
+            }
+
+            return Optional.of(new UserDetails(
+                    rs.getLong("id"),
+                    rs.getString("full_name"),
+                    rs.getString("email"),
+                    rs.getString("roll_number")
+            ));
+        }, id);
+    }
     public void register(
             String fullName,
             String email,
