@@ -1303,7 +1303,7 @@ sequenceDiagram
     participant PayCtrl as PaymentController
     participant DB as MySQL Database
 
-    Note over Student: Student logs in; JSESSIONID stored in cookies.txt
+    Note over Student: Student signs in and stores JSESSIONID in cookies.txt
 
     Student->>OrderCtrl: 1. POST /order/checkout (items[0].itemId=brownie&items[0].quantity=2)
     OrderCtrl->>DB: SELECT price FROM items WHERE id = ? AND available = TRUE
