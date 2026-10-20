@@ -3,6 +3,7 @@ package com.campus.canteen.controller;
 
 import com.campus.canteen.service.ApiTokenService;
 import com.campus.canteen.service.AuthService;
+import com.campus.canteen.service.SessionRefreshService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
@@ -13,15 +14,17 @@ import java.util.Map;
 
 @RestController
 public class WebsiteAuthController {
-
+    private final SessionRefreshService sessionRefreshService;
     private final AuthService authService;
     private final ApiTokenService apiTokenService;
 
     public WebsiteAuthController(
             AuthService authService,
-            ApiTokenService apiTokenService) {
+            ApiTokenService apiTokenService,
+            SessionRefreshService sessionRefreshService) {
         this.authService = authService;
         this.apiTokenService = apiTokenService;
+        this.sessionRefreshService = sessionRefreshService;
     }
 
     @PostMapping("/auth/login")
@@ -120,68 +123,29 @@ public class WebsiteAuthController {
 
         return new org.springframework.web.servlet.view.RedirectView("/");
     }
+
     @GetMapping("/auth/refreshSession")
     public ResponseEntity<Map<String, Object>> refreshSession(
             HttpServletRequest request) {
 
         HttpSession session = request.getSession(false);
 
-        if (session == null) {
+        boolean updated = sessionRefreshService.refresh(session);
+
+        if (!updated) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of(
                             "updated", false,
-                            "message", "No active session."
+                            "message", "Session or token is invalid or expired."
                     ));
         }
-
-        Object tokenAttribute = session.getAttribute("apiToken");
-
-        if (!(tokenAttribute instanceof String token) || token.isBlank()) {
-            session.invalidate();
-
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(
-                            "updated", false,
-                            "message", "No API token found in session."
-                    ));
-        }
-
-        var tokenUserId = apiTokenService.findUserIdByToken(token);
-
-        if (tokenUserId.isEmpty()) {
-            session.invalidate();
-
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(
-                            "updated", false,
-                            "message", "Session token is invalid or expired."
-                    ));
-        }
-
-        var user = authService.findById(tokenUserId.get());
-
-        if (user.isEmpty()) {
-            session.invalidate();
-
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(
-                            "updated", false,
-                            "message", "User account not found."
-                    ));
-        }
-
-        var currentUser = user.get();
-
-        session.setAttribute("userId", currentUser.id());
-        session.setAttribute("userEmail", currentUser.email());
-        session.setAttribute("fullName", currentUser.fullName());
-        session.setAttribute("rollNumber", currentUser.rollNumber());
 
         return ResponseEntity.ok(Map.of(
                 "updated", true,
                 "message", "Session details refreshed successfully."
         ));
     }
+
     private String validateReturnUrl(String returnUrl) {
         if (returnUrl == null
                 || !returnUrl.startsWith("/")
